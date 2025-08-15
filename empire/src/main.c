@@ -12,7 +12,7 @@ void print_usage(char *argv[]) {
     printf("Usage: %s -f <database file> [options]\n", argv[0]);
     printf("\t -n - create new database file\n");
     printf("\t -f - (required) path to database file\n");
-    printf("\t -a <\"Name,Address,Hours\"> - add a new employee\n");
+    printf("\t -a <\"Name-Address-Hours\"> - add a new employee\n");
     printf("\t -l - list all employees\n");
     printf("\t -r - remove the last employee\n");
     return;
