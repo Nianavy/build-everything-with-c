@@ -4,9 +4,9 @@
 #include <stdlib.h> 
 #include <unistd.h>
 
-#include "common.h"
-#include "file.h"
-#include "parse.h"
+#include "../include/common.h"
+#include "../include/file.h"
+#include "../include/parse.h"
 
 void print_usage(char *argv[]) {
     printf("Usage: %s -f <database file> [options]\n", argv[0]);
