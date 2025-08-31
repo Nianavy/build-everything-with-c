@@ -141,7 +141,7 @@ int main() {
     // --- 1. 单线程 CPU 密集型基准测试 ---
     printf("1. 单线程 CPU 密集型基准测试\n");
     start_time_single = get_time_ns();
-    cpu_bound_task(NULL); // 单线程执行任务
+    cpu_bound_task(); // 单线程执行任务
     end_time_single = get_time_ns();
     printf("   耗时: %lld ns\n\n", end_time_single - start_time_single);
 
