@@ -272,7 +272,7 @@ int main(int argc, char *argv[]) {
             fprintf(stderr, "Error: Unable to create database file '%s'\n", filepath);
             return STATUS_ERROR;
         }
-        if (create_db_header(dbfd, &dbhdr) == STATUS_ERROR) {
+        if (create_db_header(&dbhdr) == STATUS_ERROR) {
             fprintf(stderr, "Error: Failed to create database header for '%s'\n", filepath);
             return STATUS_ERROR; // dbfd 会被 cleanup 关闭
         }

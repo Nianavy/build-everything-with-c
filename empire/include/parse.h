@@ -36,7 +36,7 @@ struct employee_t {
  * @param headerOut 指向 dbheader_t 指针的指针，用于返回新创建的头部。
  * @return 成功时返回 STATUS_SUCCESS，错误时返回 STATUS_ERROR。
  */
-int create_db_header(int fd, struct dbheader_t **headerOut);
+int create_db_header(struct dbheader_t **headerOut);
 
 /**
  * @brief 验证数据库文件的头部信息。

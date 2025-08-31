@@ -68,7 +68,7 @@ ssize_t read_full(int fd, void *buf, size_t len) {
  * @param client 指向要关闭的客户端状态。
  * @param nfds_ptr 指向 poll 描述符数量的指针（当前未使用，但保留签名）。
  */
-void close_client_connection(clientstate_t *client, int *nfds_ptr) {
+void close_client_connection(clientstate_t *client) {
     if (client->fd != -1) {
         printf("Closing connection for fd %d\n", client->fd);
         close(client->fd); // 关闭套接字
@@ -102,7 +102,7 @@ static void fsm_reply_hello(clientstate_t *client) {
     // 发送完整的 Hello 响应消息
     if (send_full(client->fd, resp_buf, sizeof(resp_buf)) == STATUS_ERROR) {
         perror("fsm_reply_hello send_full");
-        close_client_connection(client, NULL); // 发送失败则关闭连接
+        close_client_connection(client); // 发送失败则关闭连接
     } else {
         client->state = STATE_READY_FOR_MSG; // 状态转换为就绪
         printf("Client fd %d upgraded to STATE_READY_FOR_MSG\n", client->fd);
@@ -116,7 +116,7 @@ static void fsm_reply_hello(clientstate_t *client) {
  * @param error_type_code 错误消息的类型码 (虽然发送的是 MSG_ERROR)。
  * @param error_msg 详细的错误信息字符串，用于服务器日志。
  */
-static void fsm_reply_error(clientstate_t *client, dbproto_type_e error_type_code, const char* error_msg) {
+static void fsm_reply_error(clientstate_t *client, const char* error_msg) {
     char resp_buf[sizeof(dbproto_hdr_t)]; // 错误消息体通常为空，只发送头部
     dbproto_hdr_t *hdr = (dbproto_hdr_t *)resp_buf;
 
@@ -133,7 +133,7 @@ static void fsm_reply_error(clientstate_t *client, dbproto_type_e error_type_cod
         perror("fsm_reply_error send_full");
     }
     fprintf(stderr, "Client fd %d sent MSG_ERROR. Reason: %s\n", client->fd, error_msg);
-    close_client_connection(client, NULL); // 错误后通常关闭连接
+    close_client_connection(client); // 错误后通常关闭连接
 }
 
 /**
@@ -147,7 +147,7 @@ static void fsm_reply_error(clientstate_t *client, dbproto_type_e error_type_cod
 static void fsm_handle_add_employee(struct dbheader_t *dbhdr, struct employee_t **employees, clientstate_t *client, dbproto_hdr_t *req_hdr) {
     // 验证消息体长度
     if (req_hdr->len != sizeof(dbproto_employee_add_req_t)) {
-        fsm_reply_error(client, MSG_ERROR, "Add employee request length mismatch");
+        fsm_reply_error(client, "Add employee request length mismatch");
         return;
     }
 
@@ -176,7 +176,7 @@ static void fsm_handle_add_employee(struct dbheader_t *dbhdr, struct employee_t 
     // 发送完整的添加员工响应消息
     if (send_full(client->fd, resp_buf, sizeof(resp_buf)) == STATUS_ERROR) {
         perror("fsm_handle_add_employee send_full");
-        close_client_connection(client, NULL); // 发送失败则关闭连接
+        close_client_connection(client); // 发送失败则关闭连接
     } else {
         printf("Client fd %d: Employee add request processed (status: %d).\n", client->fd, status);
     }
@@ -193,7 +193,7 @@ static void fsm_handle_add_employee(struct dbheader_t *dbhdr, struct employee_t 
 static void fsm_handle_list_employees(struct dbheader_t *dbhdr, const struct employee_t *employees, clientstate_t *client, dbproto_hdr_t *req_hdr) {
     // 列表请求没有消息体，req_hdr->len 应该为 0
     if (req_hdr->len != 0) {
-        fsm_reply_error(client, MSG_ERROR, "List employee request has unexpected payload");
+        fsm_reply_error(client, "List employee request has unexpected payload");
         return;
     }
 
@@ -214,14 +214,14 @@ static void fsm_handle_list_employees(struct dbheader_t *dbhdr, const struct emp
     // 首先发送响应头部和员工数量
     if (send_full(client->fd, resp_buf, sizeof(resp_buf)) == STATUS_ERROR) {
         perror("fsm_handle_list_employees send_full header");
-        close_client_connection(client, NULL);
+        close_client_connection(client);
         return;
     }
 
     // 然后逐个发送员工数据结构
     if (dbhdr->count > 0 && employees == NULL) {
         fprintf(stderr, "Error: dbhdr->count > 0 but employees is NULL in fsm_handle_list_employees.\n");
-        fsm_reply_error(client, MSG_ERROR, "Server internal error: Employees data missing");
+        fsm_reply_error(client, "Server internal error: Employees data missing");
         return;
     }
 
@@ -231,7 +231,7 @@ static void fsm_handle_list_employees(struct dbheader_t *dbhdr, const struct emp
 
         if (send_full(client->fd, &temp_employee, sizeof(struct employee_t)) == STATUS_ERROR) {
             perror("fsm_handle_list_employees send_full employee data");
-            close_client_connection(client, NULL); // 发送失败则关闭连接
+            close_client_connection(client); // 发送失败则关闭连接
             return;
         }
     }
@@ -249,7 +249,7 @@ static void fsm_handle_list_employees(struct dbheader_t *dbhdr, const struct emp
 static void fsm_handle_remove_employee(struct dbheader_t *dbhdr, struct employee_t **employees, clientstate_t *client, dbproto_hdr_t *req_hdr) {
     // 删除请求没有消息体，req_hdr->len 应该为 0
     if (req_hdr->len != 0) {
-        fsm_reply_error(client, MSG_ERROR, "Remove employee request has unexpected payload");
+        fsm_reply_error(client, "Remove employee request has unexpected payload");
         return;
     }
 
@@ -273,7 +273,7 @@ static void fsm_handle_remove_employee(struct dbheader_t *dbhdr, struct employee
     // 发送完整的删除员工响应消息
     if (send_full(client->fd, resp_buf, sizeof(resp_buf)) == STATUS_ERROR) {
         perror("fsm_handle_remove_employee send_full");
-        close_client_connection(client, NULL); // 发送失败则关闭连接
+        close_client_connection(client); // 发送失败则关闭连接
     } else {
         printf("Client fd %d: Employee remove request processed (status: %d).\n", client->fd, status);
     }
@@ -302,7 +302,7 @@ void handle_client_fsm(struct dbheader_t *dbhdr, struct employee_t **employees, 
         } else {
             perror("recv in handle_client_fsm");
         }
-        close_client_connection(client, NULL); // 关闭连接
+        close_client_connection(client); // 关闭连接
         return;
     }
 
@@ -320,14 +320,14 @@ void handle_client_fsm(struct dbheader_t *dbhdr, struct employee_t **employees, 
             // 对消息类型进行基本检查
             if (temp_hdr.type >= MSG_MAX) {
                 fprintf(stderr, "Client fd %d: Invalid message type %d. Closing connection.\n", client->fd, temp_hdr.type);
-                fsm_reply_error(client, MSG_ERROR, "Invalid message type");
+                fsm_reply_error(client, "Invalid message type");
                 return;
             }
             // 检查完整消息是否能放入缓冲区
             if (sizeof(dbproto_hdr_t) + temp_hdr.len > CLIENT_BUFFER_SIZE) {
                 fprintf(stderr, "Client fd %d: Message length %u exceeds buffer size %d. Closing connection.\n", 
                         client->fd, (unsigned int)(sizeof(dbproto_hdr_t) + temp_hdr.len), CLIENT_BUFFER_SIZE);
-                fsm_reply_error(client, MSG_ERROR, "Message too large");
+                fsm_reply_error(client, "Message too large");
                 return;
             }
 
@@ -351,7 +351,7 @@ void handle_client_fsm(struct dbheader_t *dbhdr, struct employee_t **employees, 
                         if (current_hdr->len != sizeof(dbproto_hello_req)) {
                             fprintf(stderr, "Client fd %d: Hello request length mismatch. Expected %zu, got %u.\n", 
                                     client->fd, sizeof(dbproto_hello_req), current_hdr->len);
-                            fsm_reply_error(client, MSG_ERROR, "Hello request length mismatch");
+                            fsm_reply_error(client, "Hello request length mismatch");
                             return;
                         }
                         // 获取 Hello 请求体并验证协议版本
@@ -360,13 +360,13 @@ void handle_client_fsm(struct dbheader_t *dbhdr, struct employee_t **employees, 
                         if (hello_req->proto != PROTO_VER) {
                             fprintf(stderr, "Client fd %d: Protocol mismatch. Expected %u, got %u.\n", 
                                     client->fd, PROTO_VER, hello_req->proto);
-                            fsm_reply_error(client, MSG_ERROR, "Protocol mismatch");
+                            fsm_reply_error(client, "Protocol mismatch");
                             return;
                         }
                         fsm_reply_hello(client); // 发送 Hello 响应
                     } else {
                         fprintf(stderr, "Client fd %d: Expected MSG_HELLO_REQ, got %d. Disconnecting.\n", client->fd, current_hdr->type);
-                        fsm_reply_error(client, MSG_ERROR, "Unexpected message type in CONNECTED state");
+                        fsm_reply_error(client, "Unexpected message type in CONNECTED state");
                         return;
                     }
                     break;
@@ -385,14 +385,14 @@ void handle_client_fsm(struct dbheader_t *dbhdr, struct employee_t **employees, 
                             break;
                         default: // 未知消息类型
                             fprintf(stderr, "Client fd %d: Received unknown message type %d in READY state. Disconnecting.\n", client->fd, current_hdr->type);
-                            fsm_reply_error(client, MSG_ERROR, "Unknown message type");
+                            fsm_reply_error(client, "Unknown message type");
                             return;
                     }
                     break;
 
                 default: // 未知或异常客户端状态
                     fprintf(stderr, "Client fd %d: Unknown state %d. Disconnecting.\n", client->fd, client->state);
-                    fsm_reply_error(client, MSG_ERROR, "Unknown client state");
+                    fsm_reply_error(client, "Unknown client state");
                     return;
             }
 

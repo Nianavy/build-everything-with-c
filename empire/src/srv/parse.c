@@ -18,7 +18,7 @@
  * @param headerOut 指向 dbheader_t 指针的指针，用于返回新创建的头部。
  * @return 成功时返回 STATUS_SUCCESS，错误时返回 STATUS_ERROR。
  */
-int create_db_header(int fd, struct dbheader_t **headerOut) {
+int create_db_header(struct dbheader_t **headerOut) {
     // 分配并清零数据库头部内存，使用 cleanup 宏确保自动释放
     struct dbheader_t *header __attribute__((cleanup(_cleanup_ptr_))) = calloc(1, sizeof(struct dbheader_t));
     if (header == NULL) {

@@ -81,6 +81,6 @@ void handle_client_fsm(struct dbheader_t *dbhdr, struct employee_t **employees, 
  * @param client 指向要关闭的客户端状态
  * @param nfds_ptr 指向 poll 描述符数量的指针（在 poll_loop 内部使用）
  */
-void close_client_connection(clientstate_t *client, int *nfds_ptr);
+void close_client_connection(clientstate_t *client);
 
 #endif
