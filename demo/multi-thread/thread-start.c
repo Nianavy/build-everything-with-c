@@ -1,3 +1,7 @@
+/*
+demo for thread_craete | thread_join | thread mutex lock/unlock
+*/
+
 #include <stdio.h>
 #include <pthread.h>
 #include <unistd.h> // For sleep
@@ -11,6 +15,7 @@ void *thread_target(void *arg) {
     printf("Thread %ld: I am a thread\n", thread_id);
     pthread_mutex_lock(&counter_lock);
     for (int i = 0; i < 1000000; ++i) ++counter;
+    sleep(1);
     pthread_mutex_unlock(&counter_lock);
     printf("Counter is %d\n", counter);
     return (void*)thread_id; // 返回线程ID作为退出状态
