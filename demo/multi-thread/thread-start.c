@@ -3,12 +3,16 @@
 #include <unistd.h> // For sleep
 
 #define THREAD_COUNT 10
+int counter = 0;
+pthread_mutex_t counter_lock = PTHREAD_MUTEX_INITIALIZER;
 
 void *thread_target(void *arg) {
     long thread_id = (long)arg;
     printf("Thread %ld: I am a thread\n", thread_id);
-    // 模拟工作
-    sleep(1);
+    pthread_mutex_lock(&counter_lock);
+    for (int i = 0; i < 1000000; ++i) ++counter;
+    pthread_mutex_unlock(&counter_lock);
+    printf("Counter is %d\n", counter);
     return (void*)thread_id; // 返回线程ID作为退出状态
 }
 
