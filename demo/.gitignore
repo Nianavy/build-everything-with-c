@@ -18,6 +18,7 @@ bin/
 *.out          # 默认输出文件
 a.out          # Unix/Linux 默认输出文件
 test
+gmon.out
 
 # 忽略库文件
 *.lib
