@@ -1,4 +1,4 @@
-// main.c
+// main.c (几乎不变，只是适应了错误返回)
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -40,13 +40,13 @@ int main() {
         if (task_num == NULL) {
             perror("malloc for task_num failed");
             // 简单处理：跳过当前任务，继续尝试添加下一个
-            continue; 
+            continue;
         }
         *task_num = i;
         ret = threadpool_add_task(&pool, example_task, task_num);
         if (ret != 0) {
-            // threadpool_add_task 失败时已经 free(task_num)，这里只需要打印错误
-            fprintf(stderr, "Main: Failed to add task %d.\n", i);
+            fprintf(stderr, "Main: Failed to add task %d. Self-releasing arg.\n", i);
+            free(task_num); // threadpool_add_task 失败时，arg 由调用者释放
         }
     }
     printf("Main: All tasks submitted. Waiting for completion and destroying pool...\n");
