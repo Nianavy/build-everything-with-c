@@ -14,9 +14,9 @@ obj/
 # bin/ 会忽略 bin 目录下的所有内容，这通常是足够的
 bin/
 # 如果可执行文件可能散落在其他目录，可以使用匹配符
-*.exe          # Windows 可执行文件
-*.out          # 默认输出文件
-a.out          # Unix/Linux 默认输出文件
+*.exe
+*.out
+a.out
 test
 gmon.out
 
