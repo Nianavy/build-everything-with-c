@@ -67,6 +67,8 @@ void close_client_connection(struct server *srv, struct client_data *client) {
 // Handles reading from a client socket
 // Returns 1 if data was processed, 0 if client disconnected, -1 on error
 int handle_client_read(struct server *srv, struct client_data *client) {
+    printf("DEBUG: handle_client_read called for FD %d (mode: %s).\n",
+           client->sock_fd, (srv->mode == MODE_ET) ? "ET" : "LT");
     char buffer[1024];
     ssize_t bytes_received;
     int client_fd = client->sock_fd;
@@ -184,7 +186,7 @@ void run_server(struct server *srv) {
             perror("epoll_wait");
             break; // Fatal epoll error, exit loop
         }
-
+        printf("DEBUG: epoll_wait returned %d events.\n", num_events);
         for (int i = 0; i < num_events; ++i) {
             // Handle listen socket for new connections
             if (events[i].data.fd == srv->listen_fd) {
