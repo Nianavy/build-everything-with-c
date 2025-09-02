@@ -19,6 +19,8 @@ bin/
 a.out
 test
 gmon.out
+test/
+build/
 
 # 忽略库文件
 *.lib
