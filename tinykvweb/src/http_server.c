@@ -8,15 +8,14 @@
 #include <netinet/in.h>
 
 #include "../inc/http_server.h"
-#include "../inc/parser.h"
-#include "../inc/engine.h"
+#include "../inc/api_handler.h"
 
-#define PROT_DEFAULT 8080
-#define BUFFER_SIZE 4096
+#define BUFFER_SIZE 1024
 
 void handle_client(int client_sock, Storage *store) {
     char buffer[BUFFER_SIZE];
     ssize_t bytes_read;
+
     bytes_read = read(client_sock, buffer, sizeof(buffer) - 1);
     if (bytes_read <= 0) {
         perror("read");
@@ -25,9 +24,24 @@ void handle_client(int client_sock, Storage *store) {
     }
     buffer[bytes_read] = '\0';
 
+    char method[8], path[64];
+    if (sscanf(buffer, "%7s %63s", method, path) != 2) {
+        const char *msg = "{\"error\":\"Malformed request line\"}";
+        char response[BUFFER_SIZE];
+        snprintf(response, sizeof(response),
+        "HTTP/1.0 400 Bad Request\r\n"
+                "Content-Type: application/json\r\n"
+                "Content-Length: %zu\r\n"
+                "\r\n"
+                "%s", strlen(msg), msg);
+        write(client_sock, response, strlen(response));
+        close(client_sock);
+        return;
+    }
+
     char *body = strstr(buffer, "\r\n\r\n");
     if (!body || strlen(body) < 4) {
-        const char *msg = "{\"error\":\"Malformed request\"}";
+        const char *msg = "{\"error\":\"Missing request body\"}";
         char response[BUFFER_SIZE];
         snprintf(response, sizeof(response), 
         "HTTP/1.0 400 Bad Request\r\n"
@@ -39,36 +53,22 @@ void handle_client(int client_sock, Storage *store) {
         close(client_sock);
         return;
     }
-
     body += 4;
 
-    KvCommand cmd;
-    if (parse_input(body, &cmd) != 0) {
-        const char *msg = "{\"error\":\"Invalid command\"}";
-        char response[BUFFER_SIZE];
-        snprintf(response, sizeof(response), 
-        "HTTP/1.0 400 Bad Request\r\n"
-                "Content-Type: application/json\r\n"
-                "Content-Length: %zu\r\n"
-                "\r\n"
-                "%s", strlen(msg), msg);
-        write(client_sock, response, strlen(response));
-        close(client_sock);
-        return;
-    }
+    char msg[BUFFER_SIZE];
+    handle_api_request(store, path, body, msg, sizeof(msg));
 
-    ExecutionResult result = engine_execute(store, &cmd);
-
-    char response[BUFFER_SIZE];
+    char response[BUFFER_SIZE * 2];
     snprintf(response, sizeof(response),
     "HTTP/1.0 200 OK\r\n"
-            "Content-Type: application/json\r\n"
-            "Content-Length: %zu\r\n"
-            "\r\n"
-            "%s", strlen(result.message), result.message);
-        write(client_sock, response, strlen(response));
-        close(client_sock);
-    }
+    "Content-TYpe: application/json\r\n"
+    "Content-Length: %zu\r\n"
+    "\r\n"
+    "%s", strlen(msg), msg);
+
+    write(client_sock, response, strlen(response));
+    close(client_sock);
+}
 
 void http_server_start(Storage *store, int port) {
     int server_sock, client_sock;
