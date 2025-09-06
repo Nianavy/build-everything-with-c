@@ -3,6 +3,8 @@
 #include <stdbool.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
 #include <netinet/in.h>
 
 #include "../inc/http_server.h"
@@ -14,69 +16,98 @@
 
 void handle_client(int client_sock, Storage *store) {
     char buffer[BUFFER_SIZE];
-    int bytes = recv(client_sock, buffer, sizeof(buffer) - 1, 0);
-    if (bytes <= 0) return;
-    buffer[bytes] = '\0';
+    ssize_t bytes_read;
+    bytes_read = read(client_sock, buffer, sizeof(buffer) - 1);
+    if (bytes_read <= 0) {
+        perror("read");
+        close(client_sock);
+        return;
+    }
+    buffer[bytes_read] = '\0';
 
-    if (strncmp(buffer, "POST /api/query", 15) != 0) {
-        const char *err = "HTTP/1.0 404 Not Found\r\nContent-Length: 0\r\n\r\n";
-        send(client_sock, err, strlen(err), 0);
+    char *body = strstr(buffer, "\r\n\r\n");
+    if (!body || strlen(body) < 4) {
+        const char *msg = "{\"error\":\"Malformed request\"}";
+        char response[BUFFER_SIZE];
+        snprintf(response, sizeof(response), 
+        "HTTP/1.0 400 Bad Request\r\n"
+                "Content-Type:application/json\r\n"
+                "Content-Length:%zu\r\n"
+                "\r\n"
+                "%s", strlen(msg), msg);
+        write(client_sock, response, strlen(response));
+        close(client_sock);
         return;
     }
 
-    char *body = strstr(buffer, "\r\n\r\n");
-    if (!body) return;
     body += 4;
 
     KvCommand cmd;
-    char response[512];
+    if (parse_input(body, &cmd) != 0) {
+        const char *msg = "{\"error\":\"Invalid command\"}";
+        char response[BUFFER_SIZE];
+        snprintf(response, sizeof(response), 
+        "HTTP/1.0 400 Bad Request\r\n"
+                "Content-Type: application/json\r\n"
+                "Content-Length: %zu\r\n"
+                "\r\n"
+                "%s", strlen(msg), msg);
+        write(client_sock, response, strlen(response));
+        close(client_sock);
+        return;
+    }
 
-    if (parse_input(body, &cmd) == 0) 
-        engine_execute(store, &cmd /* , response, sizeof(response) */);
-    else snprintf(response, sizeof(response), "{\"error\":\"invalid command\"}");
+    ExecutionResult result = engine_execute(store, &cmd);
 
-    char http_response[1024];
-    snprintf(http_response, sizeof(http_response),
-        "HTTP/1.0 200 OK\r\n"
-        "Content-Type: application/json\r\n"
-        "Content-Length: %zu\r\n"
-        "\r\n"
-        "%s", strlen(response), response);
-    send(client_sock, http_response, strlen(http_response), 0);
-}
+    char response[BUFFER_SIZE];
+    snprintf(response, sizeof(response),
+    "HTTP/1.0 200 OK\r\n"
+            "Content-Type: application/json\r\n"
+            "Content-Length: %zu\r\n"
+            "\r\n"
+            "%s", strlen(result.message), result.message);
+        write(client_sock, response, strlen(response));
+        close(client_sock);
+    }
 
 void http_server_start(Storage *store, int port) {
-    int server_fd = socket(AF_INET, SOCK_STREAM, 0);
-    if (server_fd == -1) {
+    int server_sock, client_sock;
+    struct sockaddr_in server_addr, client_addr;
+    socklen_t client_len = sizeof(client_addr);
+
+    server_sock = socket(AF_INET, SOCK_STREAM, 0);
+    if (server_sock < 0) {
         perror("socket");
         exit(1);
     }
 
-    struct sockaddr_in addr = {
-        .sin_family = AF_INET,
-        .sin_port = htons(port),
-        .sin_addr.s_addr = INADDR_ANY
-    };
+    memset(&server_addr, 0, sizeof(server_addr));
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_addr.s_addr = INADDR_ANY;
+    server_addr.sin_port = htons(port);
 
-    if (bind(server_fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+    if (bind(server_sock, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
         perror("bind");
-        close(server_fd);
+        close(server_sock);
         exit(1);
     }
 
-    if (listen(server_fd, 5) < 0) {
+    if (listen(server_sock, 5) < 0) {
         perror("listen");
-        close(server_fd);
+        close(server_sock);
         exit(1);
     }
 
-    printf("HTTP server running on port %d...\n", port);
+    printf("HTTP server started on port %d...\n", port);
+
     while (true) {
-        int client_sock = accept(server_fd, NULL, NULL);
-        if (client_sock >= 0) {
-            handle_client(client_sock, store);
-            close(client_sock);
+        client_sock = accept(server_sock, (struct sockaddr *)&client_addr, &client_len);
+        if (client_sock < 0) {
+            perror("accept");
+            continue;
         }
+
+        handle_client(client_sock, store);
     }
-    close(server_fd);
+    close(server_sock);
 }
