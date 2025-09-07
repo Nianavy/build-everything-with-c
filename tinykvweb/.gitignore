@@ -18,7 +18,6 @@ bin/
 *.exe
 *.out
 a.out
-test
 gmon.out
 
 # 忽略库文件
