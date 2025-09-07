@@ -10,7 +10,7 @@
 #include "../inc/http_server.h"
 #include "../inc/api_handler.h"
 
-#define BUFFER_SIZE 1024
+#define BUFFER_SIZE 2048
 
 void handle_client(int client_sock, Storage *store) {
     char buffer[BUFFER_SIZE];
@@ -24,7 +24,7 @@ void handle_client(int client_sock, Storage *store) {
     }
     buffer[bytes_read] = '\0';
 
-    char method[8], path[64];
+    char method[8], path[128];
     if (sscanf(buffer, "%7s %63s", method, path) != 2) {
         const char *msg = "{\"error\":\"Malformed request line\"}";
         char response[BUFFER_SIZE];
@@ -39,34 +39,28 @@ void handle_client(int client_sock, Storage *store) {
         return;
     }
 
-    char *body = strstr(buffer, "\r\n\r\n");
-    if (!body || strlen(body) < 4) {
-        const char *msg = "{\"error\":\"Missing request body\"}";
-        char response[BUFFER_SIZE];
-        snprintf(response, sizeof(response), 
-        "HTTP/1.0 400 Bad Request\r\n"
-                "Content-Type:application/json\r\n"
-                "Content-Length:%zu\r\n"
-                "\r\n"
-                "%s", strlen(msg), msg);
-        write(client_sock, response, strlen(response));
-        close(client_sock);
-        return;
-    }
-    body += 4;
+    char* body_pos = strstr(buffer, "\r\n\r\n");
+    const char* body = body_pos ? body_pos + 4 : "";
 
-    char msg[BUFFER_SIZE];
+    char msg[BUFFER_SIZE * 2];
+    memset(msg, 0, sizeof(msg));
+
+    int is_full_http_resonse = 0;
     handle_api_request(store, path, body, msg, sizeof(msg));
 
-    char response[BUFFER_SIZE * 2];
-    snprintf(response, sizeof(response),
-    "HTTP/1.0 200 OK\r\n"
-    "Content-TYpe: application/json\r\n"
-    "Content-Length: %zu\r\n"
-    "\r\n"
-    "%s", strlen(msg), msg);
+    if (strncmp(msg, "HTTP/", 5) == 0) is_full_http_resonse = 1;
 
-    write(client_sock, response, strlen(response));
+    if (is_full_http_resonse) write(client_sock, msg, strlen(msg));
+    else {
+        char response[BUFFER_SIZE * 2];
+        snprintf(response, sizeof(response),
+    "HTTP/1.0 200 OK\r\n"
+            "Content-Type: application/json\r\n"
+            "Content-Length: %zu\r\n"
+            "\r\n"
+            "%s", strlen(msg), msg);
+        write(client_sock, response, strlen(response));
+    }
     close(client_sock);
 }
 
@@ -78,8 +72,11 @@ void http_server_start(Storage *store, int port) {
     server_sock = socket(AF_INET, SOCK_STREAM, 0);
     if (server_sock < 0) {
         perror("socket");
-        exit(1);
+        exit(EXIT_FAILURE);
     }
+
+    int reuse = 1;
+    setsockopt(server_sock, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse));
 
     memset(&server_addr, 0, sizeof(server_addr));
     server_addr.sin_family = AF_INET;
@@ -89,13 +86,13 @@ void http_server_start(Storage *store, int port) {
     if (bind(server_sock, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
         perror("bind");
         close(server_sock);
-        exit(1);
+        exit(EXIT_FAILURE);
     }
 
     if (listen(server_sock, 5) < 0) {
         perror("listen");
         close(server_sock);
-        exit(1);
+        exit(EXIT_FAILURE);
     }
 
     printf("HTTP server started on port %d...\n", port);
