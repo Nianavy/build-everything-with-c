@@ -1,14 +1,15 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdbool.h>
-#include <string.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <unistd.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <sys/select.h>
+#include <sys/socket.h>
 #include <sys/time.h>
+#include <sys/types.h>
+#include <unistd.h>
+
 #include "proto.h"
 
 #define MAX_CLIENTS 256
@@ -24,7 +25,6 @@ void init_clients() {
         memset(&clientStates[i].buffer, '\0', BUFF_SIZE);
     }
 }
-
 
 int find_free_slot() {
     for (int i = 0; i < MAX_CLIENTS; ++i) {
@@ -48,20 +48,20 @@ int main() {
         exit(EXIT_FAILURE);
     }
 
-    
     // bind
     memset(&server_addr, 0, sizeof(server_addr));
     server_addr.sin_family = AF_INET;
     server_addr.sin_addr.s_addr = INADDR_ANY;
     server_addr.sin_port = htons(PORT);
 
-    if (bind(listen_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) == -1) {
+    if (bind(listen_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) ==
+        -1) {
         perror("bind");
         exit(EXIT_FAILURE);
     }
 
     // listen
-    if(listen(listen_fd, 10) == -1) {
+    if (listen(listen_fd, 10) == -1) {
         perror("listen");
         exit(EXIT_FAILURE);
     }
@@ -93,21 +93,22 @@ int main() {
 
         // check for new connections
         if (FD_ISSET(listen_fd, &read_fds)) {
-            if ((conn_fd = accept(listen_fd, (struct sockaddr *)&client_addr, &client_len)) == -1) {
+            if ((conn_fd = accept(listen_fd, (struct sockaddr *)&client_addr,
+                                  &client_len)) == -1) {
                 perror("accept");
                 continue;
             }
 
             printf("New connetion from %s:%d\n",
-                inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
+                   inet_ntoa(client_addr.sin_addr),
+                   ntohs(client_addr.sin_port));
 
             // find a free slot for the new connection
             freeSlot = find_free_slot();
             if (freeSlot == -1) {
                 printf("Server full: closing new connection\n");
                 close(conn_fd);
-            }
-            else {
+            } else {
                 clientStates[freeSlot].fd = conn_fd;
                 clientStates[freeSlot].state = STATE_CONNECTED;
             }
@@ -116,18 +117,19 @@ int main() {
         for (int i = 0; i < MAX_CLIENTS; ++i) {
             if (clientStates[i].fd != -1 &&
                 FD_ISSET(clientStates[i].fd, &read_fds)) {
-                    ssize_t bytes_read = read(clientStates[i].fd,
-                                        clientStates[i].buffer,
-                                     sizeof(clientStates[i].buffer) - 1);
-                    
-                    if (bytes_read <= 0) {
-                        close(clientStates[i].fd);
-                        clientStates[i].fd = -1;
-                        clientStates[i].state = STATE_DISCONNECTED;
-                        printf("Client disconnected or error\n");
-                    }
-                    else printf("Received data from client: %s\n", clientStates[i].buffer);
-                }
+                ssize_t bytes_read =
+                    read(clientStates[i].fd, clientStates[i].buffer,
+                         sizeof(clientStates[i].buffer) - 1);
+
+                if (bytes_read <= 0) {
+                    close(clientStates[i].fd);
+                    clientStates[i].fd = -1;
+                    clientStates[i].state = STATE_DISCONNECTED;
+                    printf("Client disconnected or error\n");
+                } else
+                    printf("Received data from client: %s\n",
+                           clientStates[i].buffer);
+            }
         }
     }
 

@@ -1,13 +1,14 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdbool.h>
-#include <string.h>
-#include <unistd.h>
-#include <sys/socket.h>
+#include "../inc/http_server.h"
+
 #include <arpa/inet.h>
 #include <netinet/in.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <unistd.h>
 
-#include "../inc/http_server.h"
 #include "../inc/api_handler.h"
 
 #define BUFFER_SIZE 2048
@@ -29,18 +30,19 @@ void handle_client(int client_sock, Storage *store) {
         const char *msg = "{\"error\":\"Malformed request line\"}";
         char response[BUFFER_SIZE];
         snprintf(response, sizeof(response),
-        "HTTP/1.0 400 Bad Request\r\n"
-                "Content-Type: application/json\r\n"
-                "Content-Length: %zu\r\n"
-                "\r\n"
-                "%s", strlen(msg), msg);
+                 "HTTP/1.0 400 Bad Request\r\n"
+                 "Content-Type: application/json\r\n"
+                 "Content-Length: %zu\r\n"
+                 "\r\n"
+                 "%s",
+                 strlen(msg), msg);
         write(client_sock, response, strlen(response));
         close(client_sock);
         return;
     }
 
-    char* body_pos = strstr(buffer, "\r\n\r\n");
-    const char* body = body_pos ? body_pos + 4 : "";
+    char *body_pos = strstr(buffer, "\r\n\r\n");
+    const char *body = body_pos ? body_pos + 4 : "";
 
     char msg[BUFFER_SIZE * 2];
     memset(msg, 0, sizeof(msg));
@@ -50,15 +52,17 @@ void handle_client(int client_sock, Storage *store) {
 
     if (strncmp(msg, "HTTP/", 5) == 0) is_full_http_resonse = 1;
 
-    if (is_full_http_resonse) write(client_sock, msg, strlen(msg));
+    if (is_full_http_resonse)
+        write(client_sock, msg, strlen(msg));
     else {
         char response[BUFFER_SIZE * 2];
         snprintf(response, sizeof(response),
-    "HTTP/1.0 200 OK\r\n"
-            "Content-Type: application/json\r\n"
-            "Content-Length: %zu\r\n"
-            "\r\n"
-            "%s", strlen(msg), msg);
+                 "HTTP/1.0 200 OK\r\n"
+                 "Content-Type: application/json\r\n"
+                 "Content-Length: %zu\r\n"
+                 "\r\n"
+                 "%s",
+                 strlen(msg), msg);
         write(client_sock, response, strlen(response));
     }
     close(client_sock);
@@ -83,7 +87,8 @@ void http_server_start(Storage *store, int port) {
     server_addr.sin_addr.s_addr = INADDR_ANY;
     server_addr.sin_port = htons(port);
 
-    if (bind(server_sock, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
+    if (bind(server_sock, (struct sockaddr *)&server_addr,
+             sizeof(server_addr)) < 0) {
         perror("bind");
         close(server_sock);
         exit(EXIT_FAILURE);
@@ -98,7 +103,8 @@ void http_server_start(Storage *store, int port) {
     printf("HTTP server started on port %d...\n", port);
 
     while (true) {
-        client_sock = accept(server_sock, (struct sockaddr *)&client_addr, &client_len);
+        client_sock =
+            accept(server_sock, (struct sockaddr *)&client_addr, &client_len);
         if (client_sock < 0) {
             perror("accept");
             continue;

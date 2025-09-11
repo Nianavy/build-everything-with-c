@@ -41,8 +41,7 @@ int main() {
     if (pid == -1) {
         perror("fork failed");
         exit(1);
-    }
-    else if (pid == 0) {
+    } else if (pid == 0) {
         // 子进程：消费者
         while (1) {
             ssize_t bytes_read = mq_receive(mq, buffer, MAX_SIZE, NULL);
@@ -53,17 +52,12 @@ int main() {
             buffer[bytes_read] = '\0';
             printf("sub-process received: %s\n", buffer);
 
-            if (strcmp(buffer, MSG_STOP) == 0) {
-                break;
-            }
+            if (strcmp(buffer, MSG_STOP) == 0) { break; }
         }
 
-        if (mq_close(mq) == -1) {
-            perror("sub-process mq_close failed");
-        }
+        if (mq_close(mq) == -1) { perror("sub-process mq_close failed"); }
         exit(0);
-    }
-    else {
+    } else {
         // 父进程：生产者
         for (int i = 0; i < 3; ++i) {
             if (i == 2) {
@@ -81,12 +75,8 @@ int main() {
 
         wait(NULL);  // 等待子进程结束
 
-        if (mq_close(mq) == -1) {
-            perror("par-process mq_close failed");
-        }
-        if (mq_unlink(QUEUE_NAME) == -1) {
-            perror("mq_unlink failed");
-        }
+        if (mq_close(mq) == -1) { perror("par-process mq_close failed"); }
+        if (mq_unlink(QUEUE_NAME) == -1) { perror("mq_unlink failed"); }
     }
 
     return 0;

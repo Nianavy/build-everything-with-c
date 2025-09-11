@@ -2,15 +2,15 @@
 demo for IPC. using semaphore + share memory.
 */
 
+#include <fcntl.h>
+#include <semaphore.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
-#include <fcntl.h>
 #include <sys/wait.h>
-#include <semaphore.h>
+#include <unistd.h>
 
 #define SHM_NAME "/my_shard_memory"
 #define SHM_SIZE 1024
@@ -44,8 +44,8 @@ int main() {
         exit(EXIT_FAILURE);
     }
 
-    shm_ptr = (char *)mmap(NULL, SHM_SIZE, PROT_READ | PROT_WRITE,
-                        MAP_SHARED, shm_fd, 0);
+    shm_ptr = (char *)mmap(NULL, SHM_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED,
+                           shm_fd, 0);
     if (shm_ptr == MAP_FAILED) {
         perror("mmap failed");
         sem_close(sem);
@@ -59,8 +59,7 @@ int main() {
     if (pid == -1) {
         perror("fork failed");
         exit(EXIT_FAILURE);
-    }
-    else if (pid == 0) {
+    } else if (pid == 0) {
         strcpy(shm_ptr, "Ciao from sub-process!");
         printf("sub-process write in: %s\n", shm_ptr);
 
@@ -71,8 +70,7 @@ int main() {
         sem_close(sem);
         printf("sub-process end\n");
         exit(0);
-    }
-    else {
+    } else {
         sem_wait(sem);
 
         printf("par-process read out: %s\n", shm_ptr);

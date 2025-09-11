@@ -7,15 +7,15 @@ demo for IO Multiplexing: epoll.
 #include <netinet/in.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h> // For memset
+#include <string.h>  // For memset
 #include <sys/epoll.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
 // Define server modes
 enum server_mode {
-    MODE_LT, // Level Triggered
-    MODE_ET  // Edge Triggered
+    MODE_LT,  // Level Triggered
+    MODE_ET   // Edge Triggered
 };
 
 // Client specific data to pass through epoll_event.data.ptr
@@ -51,17 +51,17 @@ void set_nonblocking(int fd) {
 void close_client_connection(struct server *srv, struct client_data *client) {
     if (client->sock_fd != -1) {
         // Remove from epoll first
-        if (epoll_ctl(srv->epoll_fd, EPOLL_CTL_DEL, client->sock_fd, NULL) == -1) {
+        if (epoll_ctl(srv->epoll_fd, EPOLL_CTL_DEL, client->sock_fd, NULL) ==
+            -1) {
             perror("epoll_ctl(EPOLL_CTL_DEL) for client");
             // Don't exit, just log and continue to close socket
         }
         close(client->sock_fd);
         printf("Client disconnected: %s:%d (FD: %d)\n",
                inet_ntoa(client->client_addr.sin_addr),
-               ntohs(client->client_addr.sin_port),
-               client->sock_fd);
+               ntohs(client->client_addr.sin_port), client->sock_fd);
     }
-    free(client); // Free the client_data structure
+    free(client);  // Free the client_data structure
 }
 
 // Handles reading from a client socket
@@ -82,11 +82,12 @@ int handle_client_read(struct server *srv, struct client_data *client) {
 
         if (bytes_received == -1) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                // No more data to read for now. This is expected in non-blocking.
-                return 1; // Still active
+                // No more data to read for now. This is expected in
+                // non-blocking.
+                return 1;  // Still active
             } else {
                 perror("recv error");
-                return -1; // Actual error
+                return -1;  // Actual error
             }
         }
 
@@ -96,14 +97,14 @@ int handle_client_read(struct server *srv, struct client_data *client) {
             return 0;
         }
 
-        buffer[bytes_received] = '\0'; // Null-terminate for printing
+        buffer[bytes_received] = '\0';  // Null-terminate for printing
         printf("Received from client %d: %s\n", client_fd, buffer);
 
         // Echo back
         ssize_t bytes_sent = send(client_fd, buffer, bytes_received, 0);
         if (bytes_sent == -1) {
             perror("send error");
-            return -1; // Actual error
+            return -1;  // Actual error
         }
         if (bytes_sent == 0) {
             // Should not happen for non-zero bytes_received, but good to check.
@@ -111,9 +112,9 @@ int handle_client_read(struct server *srv, struct client_data *client) {
             return 0;
         }
 
-    } while (srv->mode == MODE_ET); // Loop only in ET mode
+    } while (srv->mode == MODE_ET);  // Loop only in ET mode
 
-    return 1; // Still active
+    return 1;  // Still active
 }
 
 // Initializes the server's listening socket
@@ -126,7 +127,8 @@ int setup_listener(struct server *srv) {
 
     // Allow immediate reuse of the address
     int optval = 1;
-    if (setsockopt(srv->listen_fd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) == -1) {
+    if (setsockopt(srv->listen_fd, SOL_SOCKET, SO_REUSEADDR, &optval,
+                   sizeof(optval)) == -1) {
         perror("setsockopt(SO_REUSEADDR)");
         close(srv->listen_fd);
         return -1;
@@ -135,7 +137,7 @@ int setup_listener(struct server *srv) {
     set_nonblocking(srv->listen_fd);
 
     struct sockaddr_in addr;
-    memset(&addr, 0, sizeof(addr)); // Clear the structure
+    memset(&addr, 0, sizeof(addr));  // Clear the structure
     addr.sin_family = AF_INET;
     addr.sin_addr.s_addr = inet_addr(srv->ip_address);
     addr.sin_port = htons(srv->port);
@@ -146,13 +148,15 @@ int setup_listener(struct server *srv) {
         return -1;
     }
 
-    if (listen(srv->listen_fd, 128) == -1) { // Increased backlog for robustness
+    if (listen(srv->listen_fd, 128) ==
+        -1) {  // Increased backlog for robustness
         perror("listen");
         close(srv->listen_fd);
         return -1;
     }
 
-    printf("Server listening on %s:%d (FD: %d)\n", srv->ip_address, srv->port, srv->listen_fd);
+    printf("Server listening on %s:%d (FD: %d)\n", srv->ip_address, srv->port,
+           srv->listen_fd);
     return 0;
 }
 
@@ -166,7 +170,7 @@ void run_server(struct server *srv) {
 
     struct epoll_event event;
     event.data.fd = srv->listen_fd;
-    event.events = EPOLLIN; // Listen socket always LT for new connections
+    event.events = EPOLLIN;  // Listen socket always LT for new connections
 
     if (epoll_ctl(srv->epoll_fd, EPOLL_CTL_ADD, srv->listen_fd, &event) == -1) {
         perror("epoll_ctl(ADD listen_fd)");
@@ -175,42 +179,49 @@ void run_server(struct server *srv) {
         exit(EXIT_FAILURE);
     }
 
-    struct epoll_event events[1024]; // Max events per wait call
+    struct epoll_event events[1024];  // Max events per wait call
 
     while (1) {
-        int num_events = epoll_wait(srv->epoll_fd, events, 1024, -1); // Wait indefinitely
+        int num_events =
+            epoll_wait(srv->epoll_fd, events, 1024, -1);  // Wait indefinitely
         if (num_events == -1) {
-            if (errno == EINTR) { // Interrupted by signal
+            if (errno == EINTR) {  // Interrupted by signal
                 continue;
             }
             perror("epoll_wait");
-            break; // Fatal epoll error, exit loop
+            break;  // Fatal epoll error, exit loop
         }
         printf("DEBUG: epoll_wait returned %d events.\n", num_events);
         for (int i = 0; i < num_events; ++i) {
             // Handle listen socket for new connections
             if (events[i].data.fd == srv->listen_fd) {
-                while (1) { // Loop for accept, especially in ET mode
-                    struct client_data *new_client = (struct client_data *)malloc(sizeof(struct client_data));
+                while (1) {  // Loop for accept, especially in ET mode
+                    struct client_data *new_client =
+                        (struct client_data *)malloc(
+                            sizeof(struct client_data));
                     if (!new_client) {
                         perror("malloc for new client");
                         // Log and continue, or handle out of memory
-                        break; // Can't accept more if no memory
+                        break;  // Can't accept more if no memory
                     }
                     memset(new_client, 0, sizeof(struct client_data));
                     socklen_t client_addr_len = sizeof(new_client->client_addr);
-                    new_client->sock_fd = accept(srv->listen_fd, (struct sockaddr *)&new_client->client_addr, &client_addr_len);
+                    new_client->sock_fd =
+                        accept(srv->listen_fd,
+                               (struct sockaddr *)&new_client->client_addr,
+                               &client_addr_len);
 
                     if (new_client->sock_fd == -1) {
                         if (errno == EAGAIN || errno == EWOULDBLOCK) {
                             // No more incoming connections for now
                             free(new_client);
-                            break; // Exit accept loop
+                            break;  // Exit accept loop
                         } else {
                             perror("accept error");
                             free(new_client);
-                            // Log and continue, don't break main loop for one failed accept
-                            break; // Exit accept loop for this error
+                            // Log and continue, don't break main loop for one
+                            // failed accept
+                            break;  // Exit accept loop for this error
                         }
                     }
 
@@ -221,43 +232,53 @@ void run_server(struct server *srv) {
                            new_client->sock_fd);
 
                     struct epoll_event client_event;
-                    client_event.data.ptr = new_client; // Pass client_data struct
-                    client_event.events = EPOLLIN | EPOLLRDHUP; // Always watch for read and client hangup
+                    client_event.data.ptr =
+                        new_client;  // Pass client_data struct
+                    client_event.events =
+                        EPOLLIN |
+                        EPOLLRDHUP;  // Always watch for read and client hangup
 
                     if (srv->mode == MODE_ET) {
-                        client_event.events |= EPOLLET; // Add ET flag if server is in ET mode
+                        client_event.events |=
+                            EPOLLET;  // Add ET flag if server is in ET mode
                     }
 
-                    if (epoll_ctl(srv->epoll_fd, EPOLL_CTL_ADD, new_client->sock_fd, &client_event) == -1) {
+                    if (epoll_ctl(srv->epoll_fd, EPOLL_CTL_ADD,
+                                  new_client->sock_fd, &client_event) == -1) {
                         perror("epoll_ctl(ADD client_fd)");
-                        close_client_connection(srv, new_client); // Clean up
+                        close_client_connection(srv, new_client);  // Clean up
                         // Log and continue, don't break main loop
-                        break; // Exit accept loop for this error
+                        break;  // Exit accept loop for this error
                     }
-                } // End while(1) accept loop
-            } else { // Handle client connection events
-                struct client_data *client = (struct client_data *)events[i].data.ptr;
+                }     // End while(1) accept loop
+            } else {  // Handle client connection events
+                struct client_data *client =
+                    (struct client_data *)events[i].data.ptr;
 
                 // Handle client disconnection (EPOLLRDHUP or EPOLLERR/EPOLLHUP)
-                if ((events[i].events & EPOLLRDHUP) || (events[i].events & EPOLLHUP) || (events[i].events & EPOLLERR)) {
+                if ((events[i].events & EPOLLRDHUP) ||
+                    (events[i].events & EPOLLHUP) ||
+                    (events[i].events & EPOLLERR)) {
                     printf("Client FD %d hangup or error.\n", client->sock_fd);
                     close_client_connection(srv, client);
-                    continue; // Go to next event
+                    continue;  // Go to next event
                 }
 
                 // Handle read event
                 if (events[i].events & EPOLLIN) {
                     int res = handle_client_read(srv, client);
-                    if (res == -1 || res == 0) { // Error or client disconnected
+                    if (res == -1 ||
+                        res == 0) {  // Error or client disconnected
                         close_client_connection(srv, client);
-                        // IMPORTANT: continue to the next event, DO NOT break the for loop
+                        // IMPORTANT: continue to the next event, DO NOT break
+                        // the for loop
                         continue;
                     }
                 }
                 // Add EPOLLOUT handling here if needed
             }
-        } // End for loop over events
-    } // End while(1) main event loop
+        }  // End for loop over events
+    }      // End while(1) main event loop
 
     // Cleanup resources
     close(srv->epoll_fd);
@@ -271,7 +292,7 @@ int main(int argc, char *argv[]) {
     }
 
     struct server srv;
-    memset(&srv, 0, sizeof(srv)); // Clear server structure
+    memset(&srv, 0, sizeof(srv));  // Clear server structure
 
     srv.ip_address = argv[1];
     srv.port = atoi(argv[2]);
@@ -284,9 +305,7 @@ int main(int argc, char *argv[]) {
         printf("Starting server in LT (Level Triggered) mode.\n");
     }
 
-    if (setup_listener(&srv) == -1) {
-        exit(EXIT_FAILURE);
-    }
+    if (setup_listener(&srv) == -1) { exit(EXIT_FAILURE); }
 
     run_server(&srv);
 

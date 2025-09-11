@@ -1,4 +1,5 @@
 #include <check.h>
+
 #include "../inc/storage.h"
 
 START_TEST(test_set_and_get) {

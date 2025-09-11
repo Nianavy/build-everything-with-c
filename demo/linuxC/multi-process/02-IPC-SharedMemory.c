@@ -2,14 +2,14 @@
 demo for IPC. using share memory.
 */
 
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
-#include <fcntl.h>
 #include <sys/wait.h>
+#include <unistd.h>
 
 #define SHM_NAME "/my_shared_memory"
 #define SHM_SIZE 1024
@@ -29,8 +29,8 @@ int main() {
         exit(1);
     }
 
-    shm_ptr = (char *)mmap(NULL, SHM_SIZE, PROT_READ | PROT_WRITE,
-                        MAP_SHARED, shm_fd, 0);
+    shm_ptr = (char *)mmap(NULL, SHM_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED,
+                           shm_fd, 0);
     if (shm_ptr == MAP_FAILED) {
         perror("mmap failed");
         exit(1);
@@ -40,15 +40,13 @@ int main() {
     if (pid == -1) {
         perror("fork failed");
         exit(1);
-    }
-    else if (pid == 0) {
+    } else if (pid == 0) {
         strcpy(shm_ptr, "Ciao from sub-process!");
         printf("sub-process write in: %s\n", shm_ptr);
 
         munmap(shm_ptr, SHM_SIZE);
         close(shm_fd);
-    }
-    else {
+    } else {
         sleep(1);
         printf("par-process read out: %s\n", shm_ptr);
 

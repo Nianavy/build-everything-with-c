@@ -1,10 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "../inc/parser.h"
-#include "../inc/storage.h"
+
 #include "../inc/engine.h"
 #include "../inc/http_server.h"
+#include "../inc/parser.h"
+#include "../inc/storage.h"
 
 int run_cli_mode() {
     Storage *store = storage_create();
@@ -21,8 +22,8 @@ int run_cli_mode() {
         if (parse_input(input, &cmd) == 0) {
             ExecutionResult result = engine_execute(store, &cmd);
             printf("%s\n", result.message);
-        }
-        else printf("Invalid command.\n");
+        } else
+            printf("Invalid command.\n");
         printf("Tinykvweb > ");
     }
     storage_free(store);
@@ -47,8 +48,10 @@ int main() {
     scanf("%d", &mode);
     getchar();
 
-    if (mode == 1) return run_cli_mode();
-    else if (mode == 2 ) return run_http_mode();
+    if (mode == 1)
+        return run_cli_mode();
+    else if (mode == 2)
+        return run_http_mode();
     else {
         printf("Invalid mode selected.\n");
         return -1;

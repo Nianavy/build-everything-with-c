@@ -1,13 +1,15 @@
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <sys/stat.h>
-
-#include "../inc/parser.h"
-#include "../inc/engine.h"
 #include "../inc/api_handler.h"
 
-static void handle_query(Storage *store, const char *body, char *response, int max_len) {
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/stat.h>
+
+#include "../inc/engine.h"
+#include "../inc/parser.h"
+
+static void handle_query(Storage *store, const char *body, char *response,
+                         int max_len) {
     KvCommand cmd;
     if (parse_input(body, &cmd) != 0) {
         snprintf(response, max_len, "{\"error\":\"Invalid query syntax\"}\n");
@@ -18,13 +20,15 @@ static void handle_query(Storage *store, const char *body, char *response, int m
     snprintf(response, max_len, "%s\n", result.message);
 }
 
-static void handle_health(Storage *store, const char *body, char *response, int max_len) {
+static void handle_health(Storage *store, const char *body, char *response,
+                          int max_len) {
     (void)store;
     (void)body;
     snprintf(response, max_len, "{\"status\":\"ok\"}\n");
 }
 
-static void handle_index(Storage *store, const char *body, char *response, int max_len) {
+static void handle_index(Storage *store, const char *body, char *response,
+                         int max_len) {
     (void)store;
     (void)body;
 
@@ -40,39 +44,46 @@ static void handle_index(Storage *store, const char *body, char *response, int m
     fclose(file);
 
     snprintf(response, max_len,
-    "HTTP/1.0 200 OK\r\n"
-            "Content-Type: text/html\r\n"
-            "Content-Length: %zu\r\n"
-            "\r\n"
-            "%s", bytes_read, file_content);
+             "HTTP/1.0 200 OK\r\n"
+             "Content-Type: text/html\r\n"
+             "Content-Length: %zu\r\n"
+             "\r\n"
+             "%s",
+             bytes_read, file_content);
 }
 
-static void handle_static(Storage *store, const char *body, char *response, int max_len, const char *path) {
+static void handle_static(Storage *store, const char *body, char *response,
+                          int max_len, const char *path) {
     (void)store;
     (void)body;
 
     // 防止路径穿越
     if (strstr(path, "..") || strstr(path, "//")) {
-        snprintf(response, max_len, "HTTP/1.0 403 Forbidden\r\n\r\nAccess denied");
+        snprintf(response, max_len,
+                 "HTTP/1.0 403 Forbidden\r\n\r\nAccess denied");
         return;
     }
 
     char filepath[512] = {0};
-    if (snprintf(filepath, sizeof(filepath), "../web%s", path) >= sizeof(filepath)) {
+    if (snprintf(filepath, sizeof(filepath), "../web%s", path) >=
+        sizeof(filepath)) {
         snprintf(response, max_len, "HTTP/1.0 414 URI Too Long\r\n\r\n");
         return;
     }
 
     FILE *file = fopen(filepath, "rb");
     if (!file) {
-        snprintf(response, max_len, "HTTP/1.0 404 Not Found\r\nContent-Type: text/plain\r\n\r\nFile not found");
+        snprintf(response, max_len,
+                 "HTTP/1.0 404 Not Found\r\nContent-Type: "
+                 "text/plain\r\n\r\nFile not found");
         return;
     }
 
     struct stat st;
     if (fstat(fileno(file), &st) != 0) {
         fclose(file);
-        snprintf(response, max_len, "HTTP/1.0 500 Internal Server Error\r\n\r\n");
+        snprintf(response, max_len,
+                 "HTTP/1.0 500 Internal Server Error\r\n\r\n");
         return;
     }
     size_t file_size = st.st_size;
@@ -81,24 +92,33 @@ static void handle_static(Storage *store, const char *body, char *response, int 
     const char *ext = strrchr(path, '.');
     const char *content_type = "application/octet-stream";
     if (ext) {
-        if (strcmp(ext, ".css") == 0) content_type = "text/css";
-        else if (strcmp(ext, ".js") == 0) content_type = "application/javascript";
-        else if (strcmp(ext, ".html") == 0) content_type = "text/html";
-        else if (strcmp(ext, ".png") == 0) content_type = "image/png";
-        else if (strcmp(ext, ".jpg") == 0 || strcmp(ext, ".jpeg") == 0) content_type = "image/jpeg";
-        else if (strcmp(ext, ".svg") == 0) content_type = "image/svg+xml";
+        if (strcmp(ext, ".css") == 0)
+            content_type = "text/css";
+        else if (strcmp(ext, ".js") == 0)
+            content_type = "application/javascript";
+        else if (strcmp(ext, ".html") == 0)
+            content_type = "text/html";
+        else if (strcmp(ext, ".png") == 0)
+            content_type = "image/png";
+        else if (strcmp(ext, ".jpg") == 0 || strcmp(ext, ".jpeg") == 0)
+            content_type = "image/jpeg";
+        else if (strcmp(ext, ".svg") == 0)
+            content_type = "image/svg+xml";
     }
 
     // 检查响应缓冲区是否足够
     int header_len = snprintf(response, max_len,
-        "HTTP/1.0 200 OK\r\n"
-        "Content-Type: %s\r\n"
-        "Content-Length: %zu\r\n"
-        "\r\n", content_type, file_size);
+                              "HTTP/1.0 200 OK\r\n"
+                              "Content-Type: %s\r\n"
+                              "Content-Length: %zu\r\n"
+                              "\r\n",
+                              content_type, file_size);
 
-    if (header_len < 0 || header_len >= max_len || header_len + file_size >= max_len) {
+    if (header_len < 0 || header_len >= max_len ||
+        header_len + file_size >= max_len) {
         fclose(file);
-        snprintf(response, max_len, "HTTP/1.0 507 Insufficient Storage\r\n\r\nFile too large");
+        snprintf(response, max_len,
+                 "HTTP/1.0 507 Insufficient Storage\r\n\r\nFile too large");
         return;
     }
 
@@ -106,7 +126,8 @@ static void handle_static(Storage *store, const char *body, char *response, int 
     char *file_content = malloc(file_size);
     if (!file_content) {
         fclose(file);
-        snprintf(response, max_len, "HTTP/1.0 500 Internal Server Error\r\n\r\nOut of memory");
+        snprintf(response, max_len,
+                 "HTTP/1.0 500 Internal Server Error\r\n\r\nOut of memory");
         return;
     }
 
@@ -115,7 +136,8 @@ static void handle_static(Storage *store, const char *body, char *response, int 
 
     if (bytes_read != file_size) {
         free(file_content);
-        snprintf(response, max_len, "HTTP/1.0 500 Internal Server Error\r\n\r\nRead error");
+        snprintf(response, max_len,
+                 "HTTP/1.0 500 Internal Server Error\r\n\r\nRead error");
         return;
     }
 
@@ -138,7 +160,8 @@ static ApiRoute routes[] = {
 
 #define NUM_ROUTES (sizeof(routes) / sizeof(routes[0]))
 
-void handle_api_request(Storage *store, const char *path, const char *body, char *response, int max_len) {
+void handle_api_request(Storage *store, const char *path, const char *body,
+                        char *response, int max_len) {
     for (size_t i = 0; i < NUM_ROUTES; ++i) {
         if (strcmp(path, routes[i].path) == 0) {
             routes[i].handler(store, body, response, max_len);

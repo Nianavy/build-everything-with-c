@@ -3,9 +3,9 @@ demo for multi process.
 */
 
 #include <stdio.h>
-#include <unistd.h>
 #include <stdlib.h>
 #include <sys/wait.h>
+#include <unistd.h>
 
 int main() {
     pid_t pid;
@@ -16,14 +16,12 @@ int main() {
     if (pid == -1) {
         perror("fork failed");
         exit(1);
-    }
-    else if (pid == 0) {
+    } else if (pid == 0) {
         printf("sub-process: PID = %d\n", getpid());
         execl("/bin/ls", "ls", "-l", NULL);
         perror("exec failed");
         exit(1);
-    }
-    else {
+    } else {
         printf("par-process: PID = %d, sub-process: PID = %d\n", getpid(), pid);
         wait(&status);
         printf("sub-process is end.\n");

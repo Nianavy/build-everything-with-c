@@ -3,18 +3,18 @@ demo test for IO Multiplexing: epoll.
 */
 
 #include <arpa/inet.h>
-#include <errno.h> // For errno and EAGAIN
+#include <errno.h>  // For errno and EAGAIN
 #include <netinet/in.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h> // For strlen, memset, strncpy
+#include <string.h>  // For strlen, memset, strncpy
 #include <sys/socket.h>
-#include <time.h>   // For nanosleep
-#include <unistd.h> // For close, sleep
+#include <time.h>    // For nanosleep
+#include <unistd.h>  // For close, sleep
 
 #define SERVER_IP "127.0.0.1"
 #define SERVER_PORT 3366
-#define CLIENT_BUFFER_SIZE 4096 // 客户端缓冲区可以大一些
+#define CLIENT_BUFFER_SIZE 4096  // 客户端缓冲区可以大一些
 
 // Utility for sleeping a bit
 void micro_sleep(long us) {
@@ -28,10 +28,19 @@ int main(int argc, char *argv[]) {
     // 检查命令行参数
     // Usage: ./client [send_size_bytes] [send_chunks] [chunk_delay_us]
     if (argc < 2 || argc > 4) {
-        fprintf(stderr, "Usage: %s <send_size_bytes> [send_chunks=1] [chunk_delay_us=0]\n", argv[0]);
-        fprintf(stderr, "  <send_size_bytes>: Total number of bytes to send (e.g., 2000, 10000).\n");
-        fprintf(stderr, "  [send_chunks]: How many chunks to split the total size into (default: 1, i.e., send all at once).\n");
-        fprintf(stderr, "  [chunk_delay_us]: Delay in microseconds between sending chunks (default: 0).\n");
+        fprintf(
+            stderr,
+            "Usage: %s <send_size_bytes> [send_chunks=1] [chunk_delay_us=0]\n",
+            argv[0]);
+        fprintf(stderr,
+                "  <send_size_bytes>: Total number of bytes to send (e.g., "
+                "2000, 10000).\n");
+        fprintf(stderr,
+                "  [send_chunks]: How many chunks to split the total size into "
+                "(default: 1, i.e., send all at once).\n");
+        fprintf(stderr,
+                "  [chunk_delay_us]: Delay in microseconds between sending "
+                "chunks (default: 0).\n");
         exit(EXIT_FAILURE);
     }
 
@@ -49,15 +58,20 @@ int main(int argc, char *argv[]) {
     }
 
     size_t bytes_per_chunk = total_send_size / send_chunks;
-    if (bytes_per_chunk == 0 && total_send_size > 0) { // If total_send_size is smaller than send_chunks
+    if (bytes_per_chunk == 0 &&
+        total_send_size >
+            0) {  // If total_send_size is smaller than send_chunks
         bytes_per_chunk = 1;
-        send_chunks = total_send_size; // Each chunk is 1 byte
+        send_chunks = total_send_size;  // Each chunk is 1 byte
     }
-    
+
     // 确保每个块的大小不超过缓冲区
     if (bytes_per_chunk > CLIENT_BUFFER_SIZE) {
         bytes_per_chunk = CLIENT_BUFFER_SIZE;
-        fprintf(stderr, "Warning: bytes_per_chunk adjusted to %zu (max %d) to fit buffer.\n", bytes_per_chunk, CLIENT_BUFFER_SIZE);
+        fprintf(stderr,
+                "Warning: bytes_per_chunk adjusted to %zu (max %d) to fit "
+                "buffer.\n",
+                bytes_per_chunk, CLIENT_BUFFER_SIZE);
     }
 
     int sock = socket(AF_INET, SOCK_STREAM, 0);
@@ -88,7 +102,7 @@ int main(int argc, char *argv[]) {
 
     // Prepare send buffer with repeating pattern for easy verification
     for (size_t i = 0; i < CLIENT_BUFFER_SIZE; ++i) {
-        send_buffer[i] = (i % 26) + 'A'; // A, B, C...
+        send_buffer[i] = (i % 26) + 'A';  // A, B, C...
     }
 
     ssize_t total_bytes_sent = 0;
@@ -98,13 +112,15 @@ int main(int argc, char *argv[]) {
     printf("Sending %ld bytes in %d chunks (each %zu bytes, delay %ld us)...\n",
            total_send_size, send_chunks, bytes_per_chunk, chunk_delay_us);
 
-    for (int i = 0; i < send_chunks && total_bytes_sent < total_send_size; ++i) {
+    for (int i = 0; i < send_chunks && total_bytes_sent < total_send_size;
+         ++i) {
         size_t current_chunk_size = bytes_per_chunk;
         if (total_bytes_sent + current_chunk_size > total_send_size) {
             current_chunk_size = total_send_size - total_bytes_sent;
         }
 
-        ssize_t bytes_sent_this_chunk = send(sock, send_buffer, current_chunk_size, 0);
+        ssize_t bytes_sent_this_chunk =
+            send(sock, send_buffer, current_chunk_size, 0);
         if (bytes_sent_this_chunk == -1) {
             perror("send failed");
             break;
@@ -114,7 +130,8 @@ int main(int argc, char *argv[]) {
             break;
         }
         total_bytes_sent += bytes_sent_this_chunk;
-        printf("  Chunk %d sent: %zd bytes (total: %zd)\n", i + 1, bytes_sent_this_chunk, total_bytes_sent);
+        printf("  Chunk %d sent: %zd bytes (total: %zd)\n", i + 1,
+               bytes_sent_this_chunk, total_bytes_sent);
 
         if (total_bytes_sent < total_send_size && chunk_delay_us > 0) {
             micro_sleep(chunk_delay_us);
@@ -127,35 +144,47 @@ int main(int argc, char *argv[]) {
     printf("Attempting to receive echoed data...\n");
     while (total_bytes_received < total_bytes_sent) {
         memset(recv_buffer, 0, CLIENT_BUFFER_SIZE);
-        ssize_t bytes_received_this_round = recv(sock, recv_buffer, CLIENT_BUFFER_SIZE - 1, 0);
+        ssize_t bytes_received_this_round =
+            recv(sock, recv_buffer, CLIENT_BUFFER_SIZE - 1, 0);
 
         if (bytes_received_this_round == -1) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
                 // For a blocking client, this usually means no more data.
                 // But let's give server some time if it's lagging.
-                printf("  recv returned EAGAIN/EWOULDBLOCK. Waiting for more data...\n");
-                micro_sleep(10000); // Wait 10ms
+                printf(
+                    "  recv returned EAGAIN/EWOULDBLOCK. Waiting for more "
+                    "data...\n");
+                micro_sleep(10000);  // Wait 10ms
                 continue;
             }
             perror("recv failed");
             break;
         }
         if (bytes_received_this_round == 0) {
-            printf("Server closed the connection gracefully (total received: %zd/%zd).\n", total_bytes_received, total_bytes_sent);
+            printf(
+                "Server closed the connection gracefully (total received: "
+                "%zd/%zd).\n",
+                total_bytes_received, total_bytes_sent);
             break;
         }
-        
+
         total_bytes_received += bytes_received_this_round;
-        recv_buffer[bytes_received_this_round] = '\0'; // Null-terminate received chunk
-        printf("  Received: %zd bytes (total: %zd/%zd). Content starts with: \"%.*s\"...\n",
-               bytes_received_this_round, total_bytes_received, total_bytes_sent,
-               (int)(bytes_received_this_round > 50 ? 50 : bytes_received_this_round), // Print first 50 chars
-               recv_buffer);
-        
-        // Optional: If you expect to receive more, sleep briefly to let server catch up
-        // micro_sleep(1000); 
+        recv_buffer[bytes_received_this_round] =
+            '\0';  // Null-terminate received chunk
+        printf(
+            "  Received: %zd bytes (total: %zd/%zd). Content starts with: "
+            "\"%.*s\"...\n",
+            bytes_received_this_round, total_bytes_received, total_bytes_sent,
+            (int)(bytes_received_this_round > 50
+                      ? 50
+                      : bytes_received_this_round),  // Print first 50 chars
+            recv_buffer);
+
+        // Optional: If you expect to receive more, sleep briefly to let server
+        // catch up micro_sleep(1000);
     }
-    printf("Finished receiving. Total received: %zd bytes.\n", total_bytes_received);
+    printf("Finished receiving. Total received: %zd bytes.\n",
+           total_bytes_received);
 
     close(sock);
     printf("Client disconnected.\n");

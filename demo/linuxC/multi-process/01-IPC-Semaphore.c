@@ -2,13 +2,13 @@
 demo for IPC. using semaphore.
 */
 
+#include <fcntl.h>
+#include <semaphore.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
-#include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
-#include <semaphore.h>
+#include <unistd.h>
 
 #define NAME "/my_demo_semaphore"
 
@@ -25,8 +25,7 @@ int main() {
     if (pid == -1) {
         perror("fork failed");
         exit(1);
-    }
-    else if (pid == 0) {
+    } else if (pid == 0) {
         // 子进程
         puts("sub-process waiting the semaphore...");
         sem_wait(sem);
@@ -37,9 +36,8 @@ int main() {
 
         puts("sub-process post the semaphore");
         sem_close(sem);  // 显式关闭
-        exit(0);  // 子进程结束
-    }
-    else {
+        exit(0);         // 子进程结束
+    } else {
         // 父进程
         puts("par-process waiting the semaphore...");
         sem_wait(sem);
@@ -53,9 +51,7 @@ int main() {
         wait(NULL);  // 等待子进程
 
         sem_close(sem);
-        if (sem_unlink(NAME) == -1) {
-            perror("sem_unlink failed");
-        }
+        if (sem_unlink(NAME) == -1) { perror("sem_unlink failed"); }
     }
 
     return 0;

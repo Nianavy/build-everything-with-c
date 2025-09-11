@@ -4,9 +4,9 @@ demo for IO Multiplexing: poll.
 
 #include <arpa/inet.h>
 #include <netinet/in.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdbool.h>
 #include <sys/poll.h>
 #include <sys/socket.h>
 #include <unistd.h>
@@ -53,14 +53,14 @@ connection_t accept_connection(int listen_sock) {
     connection_t conn;
     conn.sock = -1;
     socklen_t addr_len = sizeof(conn.addr);
-    int sock= accept(listen_sock, (struct sockaddr *)&conn.addr, &addr_len);
+    int sock = accept(listen_sock, (struct sockaddr *)&conn.addr, &addr_len);
     if (sock == -1) {
         perror("accept");
         return conn;
     }
     conn.sock = sock;
     printf("Client connected: %s:%d\n", inet_ntoa(conn.addr.sin_addr),
-                            ntohs(conn.addr.sin_port));
+           ntohs(conn.addr.sin_port));
     return conn;
 }
 
@@ -74,8 +74,10 @@ int echo(int sock, void (*__callback)(int, void *args), void *args) {
     }
 
     if (bytes_received == 0) {
-        if (__callback != NULL) __callback(sock, args);
-        else close(sock);
+        if (__callback != NULL)
+            __callback(sock, args);
+        else
+            close(sock);
         return 0;
     }
 
@@ -90,8 +92,10 @@ int echo(int sock, void (*__callback)(int, void *args), void *args) {
     }
 
     if (bytes_sended == 0) {
-        if (__callback != NULL) __callback(sock, args);
-        else close(sock);
+        if (__callback != NULL)
+            __callback(sock, args);
+        else
+            close(sock);
         return 0;
     }
 
@@ -145,9 +149,8 @@ void poll_(int listen_sock) {
 
                 if (conn.sock > maxfd) maxfd = conn.sock;
                 continue;
-            }
-            else {
-                args_t cbargs = { .fds = fds, .maxfd = &maxfd };
+            } else {
+                args_t cbargs = {.fds = fds, .maxfd = &maxfd};
                 int res = echo(fd, callback, &cbargs);
                 if (res <= 0) break;
             }

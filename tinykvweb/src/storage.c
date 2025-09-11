@@ -1,7 +1,8 @@
+#include "../inc/storage.h"
+
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
-#include "../inc/storage.h"
 
 #define MAX_ITEMS 1024
 #define KEY_SIZE 128
@@ -43,7 +44,8 @@ int storage_set(Storage *storage, const char *key, const char *value) {
 
 const char *storage_get(Storage *storage, const char *key) {
     for (int i = 0; i < storage->count; ++i) {
-        if (strcmp(storage->items[i].key, key) == 0) return storage->items[i].value;
+        if (strcmp(storage->items[i].key, key) == 0)
+            return storage->items[i].value;
     }
     return NULL;
 }

@@ -1,12 +1,13 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdbool.h>
-#include <string.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <unistd.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <unistd.h>
+
 #include "proto.h"
 
 void handle_client(const int fd);
@@ -25,10 +26,9 @@ int main() {
     serverInfo.sin_family = AF_INET;
     serverInfo.sin_port = htons(5555);
     serverInfo.sin_addr.s_addr = htonl(INADDR_ANY);
-    //memset(serverInfo.sin_zero, 0, 8);
+    // memset(serverInfo.sin_zero, 0, 8);
 
-    if (bind(fd, (struct sockaddr *)&serverInfo,
-    sizeof serverInfo) == -1) {
+    if (bind(fd, (struct sockaddr *)&serverInfo, sizeof serverInfo) == -1) {
         perror("bind");
         close(fd);
         return -1;

@@ -1,11 +1,7 @@
 #ifndef PROTO_H
 #define PROTO_H
 
-typedef enum {
-    STATE_NEW,
-    STATE_CONNECTED,
-    STATE_DISCONNECTED
-} state_e;
+typedef enum { STATE_NEW, STATE_CONNECTED, STATE_DISCONNECTED } state_e;
 
 typedef struct {
     int fd;

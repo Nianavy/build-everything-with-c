@@ -1,14 +1,15 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdbool.h>
-#include <string.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <unistd.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <poll.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/socket.h>
 #include <sys/time.h>
+#include <sys/types.h>
+#include <unistd.h>
+
 #include "proto.h"
 
 #define MAX_CLIENTS 256
@@ -24,7 +25,6 @@ void init_clients() {
         memset(&clientStates[i].buffer, '\0', BUFF_SIZE);
     }
 }
-
 
 int find_free_slot() {
     for (int i = 0; i < MAX_CLIENTS; ++i) {
@@ -57,26 +57,25 @@ int main() {
         exit(EXIT_FAILURE);
     }
 
-    if (setsockopt(listen_fd, SOL_SOCKET, SO_REUSEADDR,
-        &opt, sizeof(opt))) {
+    if (setsockopt(listen_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt))) {
         perror("setsockopt");
         exit(EXIT_FAILURE);
     }
 
-    
     // bind
     memset(&server_addr, 0, sizeof(server_addr));
     server_addr.sin_family = AF_INET;
     server_addr.sin_addr.s_addr = INADDR_ANY;
     server_addr.sin_port = htons(PORT);
 
-    if (bind(listen_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) == -1) {
+    if (bind(listen_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) ==
+        -1) {
         perror("bind");
         exit(EXIT_FAILURE);
     }
 
     // listen
-    if(listen(listen_fd, 10) == -1) {
+    if (listen(listen_fd, 10) == -1) {
         perror("listen");
         exit(EXIT_FAILURE);
     }
@@ -97,7 +96,7 @@ int main() {
                 ++idx;
             }
         }
-        
+
         // wait for an event on one of the sockets.
         int n_events = poll(fds, nfds, -1);
         if (n_events == -1) {
@@ -107,24 +106,26 @@ int main() {
 
         // check for new connetions.
         if (fds[0].revents & POLLIN) {
-            if ((conn_fd = accept(listen_fd, (struct sockaddr *)&client_addr, &client_len)) == -1) {
+            if ((conn_fd = accept(listen_fd, (struct sockaddr *)&client_addr,
+                                  &client_len)) == -1) {
                 perror("accept");
                 continue;
             }
 
             printf("New connection from %s:%d\n",
-                inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
-            
+                   inet_ntoa(client_addr.sin_addr),
+                   ntohs(client_addr.sin_port));
+
             freeSlot = find_free_slot();
             if (freeSlot == -1) {
                 printf("Server full: closing new connection\n");
                 close(conn_fd);
-            }
-            else {
+            } else {
                 clientStates[freeSlot].fd = conn_fd;
                 clientStates[freeSlot].state = STATE_CONNECTED;
                 ++nfds;
-                printf("Slot %d has fd %d\n", freeSlot, clientStates[freeSlot].fd);
+                printf("Slot %d has fd %d\n", freeSlot,
+                       clientStates[freeSlot].fd);
             }
 
             --n_events;
@@ -137,23 +138,26 @@ int main() {
 
                 int fd = fds[i].fd;
                 int slot = find_slot_by_fd(fd);
-                ssize_t bytes_read = read(fd, &clientStates[slot].buffer, sizeof(clientStates[slot].buffer) - 1);
+                ssize_t bytes_read =
+                    read(fd, &clientStates[slot].buffer,
+                         sizeof(clientStates[slot].buffer) - 1);
                 if (bytes_read <= 0) {
                     // connection closed or error
                     close(fd);
-                    if (slot == -1) printf("Tried to close fd that doesnt exist?\n");
+                    if (slot == -1)
+                        printf("Tried to close fd that doesnt exist?\n");
                     else {
                         clientStates[slot].fd = -1;
                         clientStates[slot].state = STATE_DISCONNECTED;
                         printf("Client disconnected or error\n");
                         --nfds;
                     }
-                }
-                else printf("Received data from client: %s\n", clientStates[slot].buffer);
+                } else
+                    printf("Received data from client: %s\n",
+                           clientStates[slot].buffer);
             }
         }
     }
-
 
     return 0;
 }
