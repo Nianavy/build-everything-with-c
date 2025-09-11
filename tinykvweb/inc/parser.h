@@ -1,11 +1,7 @@
 #ifndef PARSE_H
 #define PARSE_H
 
-typedef enum {
-    CMD_SET,
-    CMD_GET,
-    CMD_UNKNOWN
-} CommandType;
+typedef enum { CMD_SET, CMD_GET, CMD_UNKNOWN } CommandType;
 
 typedef struct {
     CommandType type;

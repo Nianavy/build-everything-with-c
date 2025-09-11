@@ -3,8 +3,10 @@
 
 #include "storage.h"
 
-typedef void (*ApiHandlerFn)(Storage *store, const char *body, char *response, int max_len);
+typedef void (*ApiHandlerFn)(Storage *store, const char *body, char *response,
+                             int max_len);
 
-void handle_api_request(Storage *store, const char *path, const char *body, char *response, int max_len);
+void handle_api_request(Storage *store, const char *path, const char *body,
+                        char *response, int max_len);
 
 #endif

@@ -8,17 +8,19 @@
 # obj/ 会忽略 obj 目录下的所有内容，这通常是足够的
 obj/
 # 如果目标文件可能散落在其他目录，可以使用 *.o
-*.o
+# *.o
 
 # 忽略所有可执行文件 (executables)
 # bin/ 会忽略 bin 目录下的所有内容，这通常是足够的
-build/
 bin/
 # 如果可执行文件可能散落在其他目录，可以使用匹配符
 *.exe
 *.out
 a.out
+test
 gmon.out
+test/
+build/
 
 # 忽略库文件
 *.lib
