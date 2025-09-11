@@ -1,3 +1,5 @@
+#include <fmt/core.h>
+
 #include <condition_variable>
 #include <exception>
 #include <iostream>
@@ -18,7 +20,7 @@ class assoc_state {
    public:
     assoc_state() : ready_(false) {}
 
-    void set_value(T* val) {
+    void set_value(T val) {
         if (ready_) return;
         {
             std::lock_guard<std::mutex> lock(mtx_);
@@ -44,13 +46,13 @@ class future {
 
     T get() {
         if (!state_) throw std::runtime_error("state_ = nullptr");
-        return state_.get();
+        return state_->wait();
     }
 };
 
 template <typename T>
 class promise {
-    std::shared_ptr<assoc_state<T>> state_;
+    std::shared_ptr<assoc_state<T>> state_{nullptr};
 
    public:
     explicit promise() : state_(std::make_shared<assoc_state<T>>()) {}
@@ -59,6 +61,29 @@ class promise {
         if (!state_) throw std::runtime_error("state_ = nullptr");
         return future<T>(state_);
     }
+
+    void set_value(T val) {
+        if (!state_) throw std::runtime_error("state_ = nullptr");
+        state_->set_value(val);
+    }
 };
 
-}  // namespace my_async
+};  // namespace my_async
+
+int main() {
+    my_async::promise<int> p;
+    std::thread t1([&]() -> void {
+        fmt::print("thread 1 start task...\n");
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+        p.set_value(1);
+        fmt::print("thread 1 set value...\n");
+    });
+    std::thread t2([&]() -> void {
+        fmt::print("thread 2 start task...\n");
+        std::this_thread::sleep_for(std::chrono::seconds(3));
+        fmt::print("thread 2 get value: {}\n", p.get_future().get());
+    });
+    t1.join();
+    t2.join();
+    return 0;
+}
