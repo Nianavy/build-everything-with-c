@@ -23,7 +23,10 @@ class LockedQueue {
     bool closed() { return closed_.load(std::memory_order_relaxed); }
 
     void close() {
-        if (!closed()) closed_.store(true, std::memory_order_relaxed);
+        if (!closed()) { 
+            closed_.store(true, std::memory_order_relaxed);
+            cv_.notify_all();
+        }
     }
 
     std::size_t size() { return size_.load(std::memory_order_relaxed); }
