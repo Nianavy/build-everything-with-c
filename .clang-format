@@ -6,4 +6,4 @@ AllowShortCaseLabelsOnASingleLine: true
 AllowShortFunctionsOnASingleLine: Inline
 BreakBeforeBraces: Attach
 SpaceBeforeParens: ControlStatements
-PointerAlignment: Left
+PointerAlignment: Right
